@@ -1,7 +1,6 @@
 #!/bin/bash
 from flask import Flask, request
 from datetime import datetime
-import json
 import boto3
 import requests
 import xxhash
@@ -11,9 +10,9 @@ from uhashring import HashRing
 
 elb = boto3.client('elbv2', region_name='eu-central-1')
 ec2 = boto3.client('ec2', region_name='eu-central-1')
-PREFIX = "NoamRoyCloudCache-17"
+PREFIX = "NoamRoyCloudCache-20"
 app = Flask(__name__)
-cache = {}
+cache = dict()
 
 
 # health check
@@ -31,7 +30,7 @@ def get_health_status():
     healthy_ips = []
     for node_id in healthy:
         healthy_ips.append(
-            ec2.describe_instances(InstanceIds=[node_id])["Reservations"][0]["Instances"][0]["PrivateIpAddress"])
+            ec2.describe_instances(InstanceIds=[node_id])["Reservations"][0]["Instances"][0]["PublicIpAddress"])
 
     healthy_ips.sort()
     return healthy_ips
@@ -73,39 +72,35 @@ def save():
     data = request.args.get('data')
     expiration_date = request.args.get('expiration_date')
     user_ip = request.remote_addr
-    # nodes = get_health_status()
     update_nodes_list()
 
     if user_ip in nodes_list:
         cache[key] = (data, expiration_date)
-        return json.dumps({"Status code": 200, "cache": cache[key]}), 200
+        return {"cache": cache[key]}, 200
     else:
-        return json.dumps({"Status code": 403, "cache": "Permission denied"}), 403
+        return {"cache": "Permission denied"}, 403
 
 
 @app.route('/load', methods=['GET', 'POST'])
 def load():
     key = request.args.get('str_key')
     user_ip = request.remote_addr
-    # nodes = get_health_status()
     update_nodes_list()
 
     ans = "Key doesn't exist"
-    if user_ip in nodes_list:
+    if user_ip in nodes_list.nodes:
         if key in cache:
             if int((datetime.now().date() - datetime.strptime(cache[key][1], '%Y-%m-%d').date()).total_seconds()) < 0:
                 ans = cache[key]
             else:
-                ans = ("Expiration time exceed", "Error")
-        response = json.dumps({"Status code": 200, "cache": ans}), 200
-        return response
+                ans = ("Expiration time exceed", "")
+        return ans, 200
     else:
-        return json.dumps({"Status code": 403, "cache": "Permission denied"}), 403
+        return {"cache": "Permission denied"}, 403
 
 
 @app.route('/get', methods=['GET', 'POST'])
 def get():
-    # nodes = get_health_status()
     key = request.args.get('str_key')
     update_nodes_list()
     key_v_node_id = xxhash.xxh64_intdigest(key) % 1024
@@ -120,13 +115,13 @@ def get():
             ans = requests.get(f'https://{alt_node}:5000/load?str_key={key}')
         except:
             response = ', '.join(ans.json().get('cache'))
-            return response
+            return response, 200
 
     if type(ans.json().get('cache')) == str:
         return ans.json().get('cache')
 
     response = ', '.join(ans.json().get('cache'))
-    return response
+    return response, 200
 
 
 @app.route('/put', methods=['GET', 'POST'])
@@ -138,9 +133,8 @@ def put():
     try:
         datetime.strptime(expiration_date, "%Y-%m-%d")
     except ValueError:
-        return "invalid date format, should be YYYY-MM-DD"
+        return "invalid date format, should be YYYY-MM-DD", 200
 
-    # nodes = get_health_status()
     update_nodes_list()
     key_v_node_id = xxhash.xxh64_intdigest(key) % 1024
 
@@ -163,7 +157,7 @@ def put():
         raise Exception(f'Error 1:{error1} \n Error 2: {error2}')
 
     if type(ans.json().get('cache')) == str:
-        return ans.json().get('cache')
+        return ans.json().get('cache'), 200
 
     response = ', '.join(ans.json().get('cache'))
-    return response
+    return response, 200

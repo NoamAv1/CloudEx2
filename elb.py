@@ -1,7 +1,7 @@
 import boto3
 from botocore import exceptions
 
-PREFIX = "NoamRoyCloudCache-17"
+PREFIX = "NoamRoyCloudCache-20"
 
 elb = boto3.client('elbv2')
 ec2 = boto3.client('ec2')
@@ -38,18 +38,6 @@ def init_security_groups(vpc_id):
         ToPort=80,
         IpProtocol="TCP",
     )
-    elb_sg.authorize_ingress(
-        CidrIp="0.0.0.0/0",
-        FromPort=5000,
-        ToPort=5000,
-        IpProtocol="TCP",
-    )
-    elb_sg.authorize_ingress(
-        CidrIp="0.0.0.0/0",
-        FromPort=80,
-        ToPort=5000,
-        IpProtocol="TCP",
-    )
 
     instances = ec2.create_security_group(
         Description="ELB Access to instances",
@@ -58,30 +46,19 @@ def init_security_groups(vpc_id):
     )
     instance_sg = boto3.resource('ec2').SecurityGroup(instances["GroupId"])
     instance_sg.authorize_ingress(
-        CidrIp=cidr_block,
+        CidrIp="0.0.0.0/0",
         FromPort=5000,
         ToPort=5000,
         IpProtocol="TCP",
     )
-    instance_sg.authorize_ingress(
-        CidrIp=cidr_block,
-        FromPort=80,
-        ToPort=80,
-        IpProtocol="TCP",
-    )
-    instance_sg.authorize_ingress(
-        CidrIp=cidr_block,
-        FromPort=80,
-        ToPort=5000,
-        IpProtocol="TCP",
-    )
+
     return {
         "elb-access": elb["GroupId"],
         "instance-access": instances["GroupId"]
     }
 
 
-# Get the defualt subnet
+# Get the default subnet
 def get_default_subnets():
     print("Getting the default subnet")
     response = ec2.describe_subnets(
@@ -117,7 +94,7 @@ def ensure_elb_setup_created():
         LoadBalancerArn=elb_arn,
         SecurityGroups=[results["elb-access"]]
     )
-    target_group=None
+    target_group = None
     try:
          target_group = elb.describe_target_groups(
             Names=[PREFIX +"-tg"],
@@ -129,10 +106,10 @@ def ensure_elb_setup_created():
         target_group = elb.create_target_group(
             Name=PREFIX +"-tg",
             Protocol="HTTP",
-            Port=80,
+            Port=5000,
             VpcId=vpc_id,
             HealthCheckProtocol="HTTP",
-            HealthCheckPort="80",
+            HealthCheckPort="5000",
             HealthCheckPath="/health-check",
             HealthCheckIntervalSeconds=15,
             HealthCheckTimeoutSeconds=10,
@@ -175,6 +152,12 @@ def register_instance_in_elb(instance_id):
         TargetGroupArn=target_group_arn,
         Targets=[{
             "Id": instance_id,
-            "Port": 80
+            "Port": 5000
         }]
     )
+
+
+def get_dns_name():
+    response = elb.describe_load_balancers(Names=[PREFIX])
+
+    return response["LoadBalancers"][0]["DNSName"]

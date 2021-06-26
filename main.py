@@ -1,7 +1,6 @@
 import subprocess
 import os
 import elb
-import sys
 
 if __name__ == "__main__":
     elb.ensure_elb_setup_created()
@@ -17,3 +16,7 @@ if __name__ == "__main__":
         elb.register_instance_in_elb(instance_id1)
         elb.register_instance_in_elb(instance_id2)
         elb.register_instance_in_elb(instance_id3)
+
+    dns = elb.get_dns_name()
+    print("Everything is setted up, please use the following link to test the system:")
+    print(dns)
