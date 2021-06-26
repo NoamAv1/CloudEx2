@@ -4,7 +4,7 @@
 
 KEY_NAME="Noam-Roy-CloudCaching-`date +'%N'`"
 KEY_PEM=".pem/$KEY_NAME.pem"
-ELB_NAME="NoamRoyCloudCache-16"
+ELB_NAME="NoamRoyCloudCache-17"
 ELB_ROLE_NAME=$"elb-role-name-`date +'%N'`"
 ELB_POLICY_NAME=$"ELBFullAccessPolicy-`date +'%N'`"
 INSTANCE_PROFILE_NAME=$"InstanceProfile-`date +'%N'`"
@@ -32,10 +32,10 @@ aws ec2 authorize-security-group-ingress        \
     --port 22 --protocol tcp \
     --cidr $MY_IP/32
 
-echo "setup rule allowing HTTP (port 80) access to $MY_IP only"
+echo "setup rule allowing HTTP (port 5000) access to $MY_IP only"
 aws ec2 authorize-security-group-ingress        \
     --group-name $SEC_GRP \
-    --port 80 --protocol tcp \
+    --port 5000 --protocol tcp \
     --cidr 0.0.0.0/0
 
 echo "create iam rule for elb access"
@@ -87,7 +87,7 @@ do
       pip install boto3
       pip install --upgrade awscli
       # run app
-      nohup flask run --host 0.0.0.0 --port 80 &>/dev/null &
+      nohup flask run --host 0.0.0.0 &>/dev/null &
       exit
 EOF
   sleep 5

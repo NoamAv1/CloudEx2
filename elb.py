@@ -1,9 +1,7 @@
 import boto3
 from botocore import exceptions
-from botocore.config import Config
-import uuid
 
-PREFIX = "NoamRoyCloudCache-16"
+PREFIX = "NoamRoyCloudCache-17"
 
 elb = boto3.client('elbv2')
 ec2 = boto3.client('ec2')
@@ -40,6 +38,18 @@ def init_security_groups(vpc_id):
         ToPort=80,
         IpProtocol="TCP",
     )
+    elb_sg.authorize_ingress(
+        CidrIp="0.0.0.0/0",
+        FromPort=5000,
+        ToPort=5000,
+        IpProtocol="TCP",
+    )
+    elb_sg.authorize_ingress(
+        CidrIp="0.0.0.0/0",
+        FromPort=80,
+        ToPort=5000,
+        IpProtocol="TCP",
+    )
 
     instances = ec2.create_security_group(
         Description="ELB Access to instances",
@@ -57,6 +67,12 @@ def init_security_groups(vpc_id):
         CidrIp=cidr_block,
         FromPort=80,
         ToPort=80,
+        IpProtocol="TCP",
+    )
+    instance_sg.authorize_ingress(
+        CidrIp=cidr_block,
+        FromPort=80,
+        ToPort=5000,
         IpProtocol="TCP",
     )
     return {

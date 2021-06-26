@@ -11,7 +11,7 @@ from uhashring import HashRing
 
 elb = boto3.client('elbv2', region_name='eu-central-1')
 ec2 = boto3.client('ec2', region_name='eu-central-1')
-PREFIX = "NoamRoyCloudCache-16"
+PREFIX = "NoamRoyCloudCache-17"
 app = Flask(__name__)
 cache = {}
 
@@ -114,10 +114,10 @@ def get():
     alt_node = get_alt_node(key_v_node_id)
 
     try:
-        ans = requests.get(f'http://{node}/load?str_key={key}')
+        ans = requests.get(f'http://{node}:5000/load?str_key={key}')
     except:
         try:
-            ans = requests.get(f'https://{alt_node}/load?str_key={key}')
+            ans = requests.get(f'https://{alt_node}:5000/load?str_key={key}')
         except:
             response = ', '.join(ans.json().get('cache'))
             return response
@@ -150,12 +150,12 @@ def put():
     error1 = None
     error2 = None
     try:
-        ans = requests.post(f'http://{node}/save?str_key={key}&data={data}&expiration_date={expiration_date}')
+        ans = requests.post(f'http://{node}:5000/save?str_key={key}&data={data}&expiration_date={expiration_date}')
     except:
         error1 = sys.exc_info()[0]
 
     try:
-        ans = requests.post(f'http://{alt_node}/save?str_key={key}&data={data}&expiration_date={expiration_date}')
+        ans = requests.post(f'http://{alt_node}:5000/save?str_key={key}&data={data}&expiration_date={expiration_date}')
     except:
         error2 = sys.exc_info()[0]
 
