@@ -10,7 +10,7 @@ from uhashring import HashRing
 
 elb = boto3.client('elbv2', region_name='eu-central-1')
 ec2 = boto3.client('ec2', region_name='eu-central-1')
-PREFIX = "NoamRoyCloudCache-25"
+PREFIX = "NoamRoyCloudCache-27"
 app = Flask(__name__)
 cache = dict()
 
@@ -104,17 +104,19 @@ def get():
     update_nodes_list()
     key_v_node_id = xxhash.xxh64_intdigest(key) % 1024
 
+    if key in cache:
+        return {"cache": cache[key]}, 200
+
     node = nodes_list.get_node(key_v_node_id)
-    alt_node = get_alt_node(key_v_node_id)
 
     try:
         ans = requests.get(f'http://{node}:5000/load?str_key={key}')
     except:
         try:
+            alt_node = get_alt_node(key_v_node_id)
             ans = requests.get(f'https://{alt_node}:5000/load?str_key={key}')
         except:
-            response = ', '.join(ans.json().get('cache'))
-            return response, 200
+            raise Exception('GET alt node failed')
 
     if type(ans.json().get('cache')) == str:
         return ans.json().get('cache')
