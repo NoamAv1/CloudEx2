@@ -1,7 +1,7 @@
 import boto3
 from botocore import exceptions
 
-PREFIX = "NoamRoyCloudCache-29"
+PREFIX = "NoamRoyCloudCache-30"
 
 elb = boto3.client('elbv2')
 ec2 = boto3.client('ec2')
