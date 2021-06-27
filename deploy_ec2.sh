@@ -4,7 +4,7 @@
 
 KEY_NAME="Noam-Roy-CloudCaching-`date +'%N'`"
 KEY_PEM=".pem/$KEY_NAME.pem"
-ELB_NAME="NoamRoyCloudCache-27"
+ELB_NAME="NoamRoyCloudCache-28"
 ELB_ROLE_NAME=$"elb-role-name-`date +'%N'`"
 ELB_POLICY_NAME=$"ELBFullAccessPolicy-`date +'%N'`"
 INSTANCE_PROFILE_NAME=$"InstanceProfile-`date +'%N'`"

@@ -10,7 +10,7 @@ from uhashring import HashRing
 
 elb = boto3.client('elbv2', region_name='eu-central-1')
 ec2 = boto3.client('ec2', region_name='eu-central-1')
-PREFIX = "NoamRoyCloudCache-27"
+PREFIX = "NoamRoyCloudCache-28"
 app = Flask(__name__)
 cache = dict()
 
