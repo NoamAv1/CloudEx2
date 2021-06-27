@@ -42,9 +42,13 @@ nodes_list = HashRing(nodes=get_health_status())
 def update_nodes_list():
     nodes = get_health_status()
 
-    for node_key in list(nodes_list.get_nodes()):
-        if node_key not in nodes:
-            nodes_list.remove_node(node_key)
+    for node in nodes:
+        if node not in list(nodes_list.get_nodes()):
+            nodes_list.add_node(node)
+
+    for node in list(nodes_list.get_nodes()):
+        if node not in nodes:
+            nodes_list.remove_node(node)
 
 
 def get_alt_node(key):
