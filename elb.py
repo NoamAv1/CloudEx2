@@ -111,8 +111,10 @@ def ensure_elb_setup_created():
             HealthCheckProtocol="HTTP",
             HealthCheckPort="5000",
             HealthCheckPath="/health-check",
-            HealthCheckIntervalSeconds=15,
-            HealthCheckTimeoutSeconds=10,
+            HealthCheckIntervalSeconds=10,
+            HealthCheckTimeoutSeconds=5,
+            HealthyThresholdCount=2,
+            UnhealthyThresholdCount=2,
             TargetType="instance",
         )
     target_group_arn = target_group["TargetGroups"][0]["TargetGroupArn"]

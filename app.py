@@ -13,7 +13,6 @@ ec2 = boto3.client('ec2', region_name='eu-central-1')
 PREFIX = "NoamRoyCloudCache-25"
 app = Flask(__name__)
 cache = dict()
-ip_dict = dict()
 
 
 # health check
@@ -31,9 +30,7 @@ def get_health_status():
     healthy_ips = []
     for node_id in healthy:
         public_ip = ec2.describe_instances(InstanceIds=[node_id])["Reservations"][0]["Instances"][0]["PublicIpAddress"]
-        private_ip = ec2.describe_instances(InstanceIds=[node_id])["Reservations"][0]["Instances"][0]["PrivateIpAddress"]
         healthy_ips.append(public_ip)
-        ip_dict[public_ip] = private_ip
 
     healthy_ips.sort()
     return healthy_ips
@@ -81,7 +78,7 @@ def save():
         cache[key] = (data, expiration_date)
         return {"cache": cache[key]}, 200
     else:
-        return {"cache": "Permission denied"}, 403
+        raise Exception('Permission denied')
 
 
 @app.route('/load', methods=['GET', 'POST'])
@@ -90,16 +87,15 @@ def load():
     user_ip = request.remote_addr
     update_nodes_list()
 
-    ans = "Key doesn't exist"
     if user_ip in list(nodes_list.get_nodes()):
         if key in cache:
             if int((datetime.now().date() - datetime.strptime(cache[key][1], '%Y-%m-%d').date()).total_seconds()) < 0:
-                ans = cache[key]
+                return {"cache": cache[key]}, 200
             else:
-                ans = ("Expiration time exceed", "")
-        return {"cache": ans}, 200
+                return "Expiration time exceed", 200
+        raise Exception("Key Doesn't exist")
     else:
-        return {"cache": "Permission denied"}, 403
+        raise Exception('Permission denied')
 
 
 @app.route('/get', methods=['GET', 'POST'])
@@ -108,8 +104,8 @@ def get():
     update_nodes_list()
     key_v_node_id = xxhash.xxh64_intdigest(key) % 1024
 
-    node = ip_dict[nodes_list.get_node(key_v_node_id)]
-    alt_node = ip_dict[get_alt_node(key_v_node_id)]
+    node = nodes_list.get_node(key_v_node_id)
+    alt_node = get_alt_node(key_v_node_id)
 
     try:
         ans = requests.get(f'http://{node}:5000/load?str_key={key}')
@@ -141,8 +137,8 @@ def put():
     update_nodes_list()
     key_v_node_id = xxhash.xxh64_intdigest(key) % 1024
 
-    node = ip_dict[nodes_list.get_node(key_v_node_id)]
-    alt_node = ip_dict[get_alt_node(key_v_node_id)]
+    node = nodes_list.get_node(key_v_node_id)
+    alt_node = get_alt_node(key_v_node_id)
 
     error1 = None
     error2 = None
