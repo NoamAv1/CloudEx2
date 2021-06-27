@@ -1,7 +1,7 @@
 import boto3
 from botocore import exceptions
 
-PREFIX = "NoamRoyCloudCache-21"
+PREFIX = "NoamRoyCloudCache-25"
 
 elb = boto3.client('elbv2')
 ec2 = boto3.client('ec2')
@@ -46,7 +46,7 @@ def init_security_groups(vpc_id):
     )
     instance_sg = boto3.resource('ec2').SecurityGroup(instances["GroupId"])
     instance_sg.authorize_ingress(
-        CidrIp="cidr_block",
+        CidrIp=cidr_block,
         FromPort=5000,
         ToPort=5000,
         IpProtocol="TCP",

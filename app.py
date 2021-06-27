@@ -10,9 +10,10 @@ from uhashring import HashRing
 
 elb = boto3.client('elbv2', region_name='eu-central-1')
 ec2 = boto3.client('ec2', region_name='eu-central-1')
-PREFIX = "NoamRoyCloudCache-21"
+PREFIX = "NoamRoyCloudCache-25"
 app = Flask(__name__)
 cache = dict()
+ip_dict = dict()
 
 
 # health check
@@ -29,15 +30,16 @@ def get_health_status():
 
     healthy_ips = []
     for node_id in healthy:
-        healthy_ips.append(
-            ec2.describe_instances(InstanceIds=[node_id])["Reservations"][0]["Instances"][0]["PrivateIpAddress"])
+        public_ip = ec2.describe_instances(InstanceIds=[node_id])["Reservations"][0]["Instances"][0]["PublicIpAddress"]
+        private_ip = ec2.describe_instances(InstanceIds=[node_id])["Reservations"][0]["Instances"][0]["PrivateIpAddress"]
+        healthy_ips.append(public_ip)
+        ip_dict[public_ip] = private_ip
 
     healthy_ips.sort()
     return healthy_ips
 
 
-init_nodes = get_health_status()
-nodes_list = HashRing(nodes=init_nodes)
+nodes_list = HashRing(nodes=get_health_status())
 
 
 def update_nodes_list():
@@ -106,8 +108,8 @@ def get():
     update_nodes_list()
     key_v_node_id = xxhash.xxh64_intdigest(key) % 1024
 
-    node = nodes_list.get_node(key_v_node_id)
-    alt_node = get_alt_node(key_v_node_id)
+    node = ip_dict[nodes_list.get_node(key_v_node_id)]
+    alt_node = ip_dict[get_alt_node(key_v_node_id)]
 
     try:
         ans = requests.get(f'http://{node}:5000/load?str_key={key}')
@@ -139,8 +141,8 @@ def put():
     update_nodes_list()
     key_v_node_id = xxhash.xxh64_intdigest(key) % 1024
 
-    node = nodes_list.get_node(key_v_node_id)
-    alt_node = get_alt_node(key_v_node_id)
+    node = ip_dict[nodes_list.get_node(key_v_node_id)]
+    alt_node = ip_dict[get_alt_node(key_v_node_id)]
 
     error1 = None
     error2 = None

@@ -18,5 +18,6 @@ if __name__ == "__main__":
         elb.register_instance_in_elb(instance_id3)
 
     dns = elb.get_dns_name()
-    print("Everything is set up, please use the following link to test the system:")
+    print("Everything is set up, please use the following link to test the system")
+    print("But first, please wait about 30 secs:")
     print(dns)
