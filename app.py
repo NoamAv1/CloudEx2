@@ -10,7 +10,7 @@ from uhashring import HashRing
 
 elb = boto3.client('elbv2', region_name='eu-central-1')
 ec2 = boto3.client('ec2', region_name='eu-central-1')
-PREFIX = "NoamRoyCloudCache-20"
+PREFIX = "NoamRoyCloudCache-21"
 app = Flask(__name__)
 cache = dict()
 
@@ -30,19 +30,20 @@ def get_health_status():
     healthy_ips = []
     for node_id in healthy:
         healthy_ips.append(
-            ec2.describe_instances(InstanceIds=[node_id])["Reservations"][0]["Instances"][0]["PublicIpAddress"])
+            ec2.describe_instances(InstanceIds=[node_id])["Reservations"][0]["Instances"][0]["PrivateIpAddress"])
 
     healthy_ips.sort()
     return healthy_ips
 
 
-nodes_list = HashRing(nodes=get_health_status())
+init_nodes = get_health_status()
+nodes_list = HashRing(nodes=init_nodes)
 
 
 def update_nodes_list():
     nodes = get_health_status()
 
-    for node_key in nodes_list.nodes:
+    for node_key in list(nodes_list.get_nodes()):
         if node_key not in nodes:
             nodes_list.remove_node(node_key)
 
@@ -74,7 +75,7 @@ def save():
     user_ip = request.remote_addr
     update_nodes_list()
 
-    if user_ip in nodes_list:
+    if user_ip in list(nodes_list.get_nodes()):
         cache[key] = (data, expiration_date)
         return {"cache": cache[key]}, 200
     else:
@@ -88,13 +89,13 @@ def load():
     update_nodes_list()
 
     ans = "Key doesn't exist"
-    if user_ip in nodes_list.nodes:
+    if user_ip in list(nodes_list.get_nodes()):
         if key in cache:
             if int((datetime.now().date() - datetime.strptime(cache[key][1], '%Y-%m-%d').date()).total_seconds()) < 0:
                 ans = cache[key]
             else:
                 ans = ("Expiration time exceed", "")
-        return ans, 200
+        return {"cache": ans}, 200
     else:
         return {"cache": "Permission denied"}, 403
 

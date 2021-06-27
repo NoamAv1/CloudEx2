@@ -1,7 +1,7 @@
 import boto3
 from botocore import exceptions
 
-PREFIX = "NoamRoyCloudCache-20"
+PREFIX = "NoamRoyCloudCache-21"
 
 elb = boto3.client('elbv2')
 ec2 = boto3.client('ec2')
@@ -11,9 +11,9 @@ ec2 = boto3.client('ec2')
 def init_security_groups(vpc_id):
     print("Initial security groups for ELB")
     try:
-        response = ec2.describe_security_groups(GroupNames=[PREFIX+"elb-access"])
+        response = ec2.describe_security_groups(GroupNames=[PREFIX + "elb-access"])
         elb_access = response["SecurityGroups"][0]
-        response = ec2.describe_security_groups(GroupNames=[PREFIX+"instance-access"])
+        response = ec2.describe_security_groups(GroupNames=[PREFIX + "instance-access"])
         instance_access = response["SecurityGroups"][0]
         return {
             "elb-access": elb_access["GroupId"],
@@ -26,12 +26,12 @@ def init_security_groups(vpc_id):
     vpc = ec2.describe_vpcs(VpcIds=[vpc_id])
     cidr_block = vpc["Vpcs"][0]["CidrBlock"]
 
-    elb = ec2.create_security_group(
+    elb_external_access = ec2.create_security_group(
         Description="ELB External Access",
-        GroupName=PREFIX+"elb-access",
+        GroupName=PREFIX + "elb-access",
         VpcId=vpc_id
     )
-    elb_sg = boto3.resource('ec2').SecurityGroup(elb["GroupId"])
+    elb_sg = boto3.resource('ec2').SecurityGroup(elb_external_access["GroupId"])
     elb_sg.authorize_ingress(
         CidrIp="0.0.0.0/0",
         FromPort=80,
@@ -41,19 +41,19 @@ def init_security_groups(vpc_id):
 
     instances = ec2.create_security_group(
         Description="ELB Access to instances",
-        GroupName=PREFIX+"instance-access",
+        GroupName=PREFIX + "instance-access",
         VpcId=vpc_id
     )
     instance_sg = boto3.resource('ec2').SecurityGroup(instances["GroupId"])
     instance_sg.authorize_ingress(
-        CidrIp="0.0.0.0/0",
+        CidrIp="cidr_block",
         FromPort=5000,
         ToPort=5000,
         IpProtocol="TCP",
     )
 
     return {
-        "elb-access": elb["GroupId"],
+        "elb-access": elb_external_access["GroupId"],
         "instance-access": instances["GroupId"]
     }
 
@@ -81,7 +81,7 @@ def ensure_elb_setup_created():
             raise e
         subnets = get_default_subnets()
         print("Creating ELB")
-        response= elb.create_load_balancer(
+        response = elb.create_load_balancer(
             Name=PREFIX,
             Scheme='internet-facing',
             IpAddressType='ipv4',
@@ -96,15 +96,15 @@ def ensure_elb_setup_created():
     )
     target_group = None
     try:
-         target_group = elb.describe_target_groups(
-            Names=[PREFIX +"-tg"],
+        target_group = elb.describe_target_groups(
+            Names=[PREFIX + "-tg"],
         )
     except exceptions.ClientError as e:
         if e.response['Error']['Code'] != 'TargetGroupNotFound':
             raise e
         print("Creating ELB target group")
         target_group = elb.create_target_group(
-            Name=PREFIX +"-tg",
+            Name=PREFIX + "-tg",
             Protocol="HTTP",
             Port=5000,
             VpcId=vpc_id,
@@ -115,7 +115,7 @@ def ensure_elb_setup_created():
             HealthCheckTimeoutSeconds=10,
             TargetType="instance",
         )
-    target_group_arn= target_group["TargetGroups"][0]["TargetGroupArn"]
+    target_group_arn = target_group["TargetGroups"][0]["TargetGroupArn"]
     listeners = elb.describe_listeners(LoadBalancerArn=elb_arn)
     if len(listeners["Listeners"]) == 0:
         print("Creating ELB listener")
@@ -131,7 +131,7 @@ def ensure_elb_setup_created():
                 }
             ]
         )
-    return results 
+    return results
 
 
 # add EC2 to elb
