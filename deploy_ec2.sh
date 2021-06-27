@@ -4,7 +4,7 @@
 
 KEY_NAME="Noam-Roy-CloudCaching-`date +'%N'`"
 KEY_PEM=".pem/$KEY_NAME.pem"
-ELB_NAME="NoamRoyCloudCache-28"
+ELB_NAME="NoamRoyCloudCache-29"
 ELB_ROLE_NAME=$"elb-role-name-`date +'%N'`"
 ELB_POLICY_NAME=$"ELBFullAccessPolicy-`date +'%N'`"
 INSTANCE_PROFILE_NAME=$"InstanceProfile-`date +'%N'`"
@@ -82,7 +82,7 @@ do
       pip install boto3
       pip install --upgrade awscli
       # run app
-      flask run --host 0.0.0.0
+      nohup flask run --host 0.0.0.0 &>/dev/null &
       exit
 EOF
   sleep 10
