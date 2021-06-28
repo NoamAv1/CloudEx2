@@ -10,7 +10,7 @@ from uhashring import HashRing
 
 elb = boto3.client('elbv2', region_name='eu-central-1')
 ec2 = boto3.client('ec2', region_name='eu-central-1')
-PREFIX = "NoamRoyCloudCache-30"
+PREFIX = "NoamRoyCloudCache"
 app = Flask(__name__)
 cache = dict()
 
@@ -29,7 +29,7 @@ def get_health_status():
 
     healthy_ips = []
     for node_id in healthy:
-        public_ip = ec2.describe_instances(InstanceIds=[node_id])["Reservations"][0]["Instances"][0]["PublicIpAddress"]
+        public_ip = ec2.describe_instances(InstanceIds=[node_id])["Reservations"][0]["Instances"][0]["PrivateIpAddress"]
         healthy_ips.append(public_ip)
 
     healthy_ips.sort()
@@ -75,31 +75,23 @@ def save():
     key = request.args.get('str_key')
     data = request.args.get('data')
     expiration_date = request.args.get('expiration_date')
-    user_ip = request.remote_addr
     update_nodes_list()
 
-    if user_ip in list(nodes_list.get_nodes()):
-        cache[key] = (data, expiration_date)
-        return {"cache": cache[key]}, 200
-    else:
-        raise Exception('Permission denied')
+    cache[key] = (data, expiration_date)
+    return {"cache": cache[key]}, 200
 
 
 @app.route('/load', methods=['GET', 'POST'])
 def load():
     key = request.args.get('str_key')
-    user_ip = request.remote_addr
     update_nodes_list()
 
-    if user_ip in list(nodes_list.get_nodes()):
-        if key in cache:
-            if int((datetime.now().date() - datetime.strptime(cache[key][1], '%Y-%m-%d').date()).total_seconds()) < 0:
-                return {"cache": cache[key]}, 200
-            else:
-                return "Expiration time exceed", 200
-        raise Exception("Key Doesn't exist")
-    else:
-        raise Exception('Permission denied')
+    if key in cache:
+        if int((datetime.now().date() - datetime.strptime(cache[key][1], '%Y-%m-%d').date()).total_seconds()) < 0:
+            return {"cache": cache[key]}, 200
+        else:
+            return "Expiration time exceed", 200
+    raise Exception("Key Doesn't exist")
 
 
 @app.route('/get', methods=['GET', 'POST'])
