@@ -29,8 +29,8 @@ def get_health_status():
 
     healthy_ips = []
     for node_id in healthy:
-        public_ip = ec2.describe_instances(InstanceIds=[node_id])["Reservations"][0]["Instances"][0]["PrivateIpAddress"]
-        healthy_ips.append(public_ip)
+        private_ip = ec2.describe_instances(InstanceIds=[node_id])["Reservations"][0]["Instances"][0]["PrivateIpAddress"]
+        healthy_ips.append(private_ip)
 
     healthy_ips.sort()
     return healthy_ips
@@ -136,7 +136,6 @@ def put():
     key_v_node_id = xxhash.xxh64_intdigest(key) % 1024
 
     node = nodes_list.get_node(key_v_node_id)
-    alt_node = get_alt_node(key_v_node_id)
 
     error1 = None
     error2 = None
@@ -146,6 +145,7 @@ def put():
         error1 = sys.exc_info()[0]
 
     try:
+        alt_node = get_alt_node(key_v_node_id)
         ans = requests.post(f'http://{alt_node}:5000/save?str_key={key}&data={data}&expiration_date={expiration_date}')
     except:
         error2 = sys.exc_info()[0]
